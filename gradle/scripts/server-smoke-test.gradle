@@ -1,0 +1,181 @@
+// The server smoke test: starts a dedicated server with the mod, waits until it has started, stops it,
+// and fails if it crashed or the mod logged an error.
+//
+//   ./gradlew serverSmokeTest
+//
+// It runs in build/server-smoke-test with a new world each time, so it does not touch the run folder of the dev client, and uses its
+// own port and its own copy of the mod jar, so it can run while the client is open. The Minecraft EULA must be accepted for a server to start: the task only writes
+// eula.txt when the accept_minecraft_eula property is true (in ~/.gradle/gradle.properties, or -Paccept_minecraft_eula=true).
+
+import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+/** Copies the console of the server to a file, and sends "stop" to it once it says that it has started. */
+class SmokeTestConsole extends OutputStream {
+    final OutputStream file
+    final CountDownLatch started = new CountDownLatch(1)
+    private final StringBuilder line = new StringBuilder()
+
+    SmokeTestConsole(OutputStream file) {
+        this.file = file
+    }
+
+    @Override
+    void write(int b) {
+        file.write(b)
+        if (b == (int) '\n') {
+            if (line.indexOf('Done (') >= 0 && line.indexOf('For help, type "help"') >= 0) {
+                started.countDown()
+            }
+            line.setLength(0)
+        } else {
+            line.append((char) b)
+        }
+    }
+
+    @Override
+    void flush() {
+        file.flush()
+    }
+
+    @Override
+    void close() {
+        file.close()
+    }
+}
+
+/** The input of the server: nothing until it has started, then "stop". Gives up after the time limit, so that it never hangs. */
+class SmokeTestInput extends InputStream {
+    final SmokeTestConsole console
+    private final long deadline
+    private byte[] command = 'stop\n'.getBytes('UTF-8')
+    private int position = 0
+
+    SmokeTestInput(SmokeTestConsole console, Duration limit) {
+        this.console = console
+        this.deadline = System.nanoTime() + limit.toNanos()
+    }
+
+    @Override
+    int read() {
+        while (!console.started.await(500, TimeUnit.MILLISECONDS)) {
+            if (System.nanoTime() > deadline) {
+                return -1
+            }
+        }
+        return position < command.length ? command[position++] : -1
+    }
+
+    @Override
+    int read(byte[] buffer, int offset, int length) {
+        int b = read()
+        if (b < 0) {
+            return -1
+        }
+        buffer[offset] = (byte) b
+        return 1
+    }
+}
+
+def smokeDir = layout.buildDirectory.dir('server-smoke-test')
+def smokeLimit = Duration.ofMinutes(8)
+
+// The plugins block of build.gradle is not visible to this file, so the task type is found through the runServer task of RFG
+def runServer = tasks.named('runServer').get()
+ClassLoader rfgLoader = runServer.class.classLoader
+Class runTaskType = Class.forName('com.gtnewhorizons.retrofuturagradle.minecraft.RunMinecraftTask', true, rfgLoader)
+def dedicatedServer = Class.forName('com.gtnewhorizons.retrofuturagradle.util.Distribution', true, rfgLoader).getField('DEDICATED_SERVER').get(null)
+
+// The dev client loads the mod from the jar of the jar task and keeps it open, so rebuilding that jar breaks every resource the client
+// reads afterwards. The server gets its own jar with the same contents and manifest instead, and never runs the jar task.
+def smokeJar = tasks.register('serverSmokeTestJar', Jar) { task ->
+    def devJar = tasks.named('jar', Jar).get()
+    task.description = 'Builds the copy of the dev jar that the server smoke test runs, so that the jar of a running client stays untouched'
+    task.with(devJar)
+    task.manifest { attributes(devJar.manifest.attributes) }
+    task.destinationDirectory = layout.buildDirectory.dir('server-smoke-test-jar')
+    task.archiveFileName = devJar.archiveFileName
+}
+
+tasks.register('serverSmokeTest', runTaskType, dedicatedServer).configure { task ->
+    group = 'verification'
+    description = 'Starts a dedicated server with the mod, and fails if it crashes or the mod logs an error'
+    task.setup(project)
+    task.dependsOn(runServer.dependsOn)
+    // Everything runServer needs except the jar task, which comes with the dev jar on its classpath
+    task.dependsOn({ runServer.taskDependencies.getDependencies(runServer).findAll { it.name != 'jar' } })
+    task.dependsOn(smokeJar)
+    task.mainClass.set(runServer.mainClass)
+    task.systemProperties(runServer.systemProperties)
+    // The classpath of runServer with the dev jar replaced by the copy. The paths are read in a closure, so that the jar task does
+    // not become a dependency through the classpath.
+    task.classpath = files({
+        File devJarFile = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        File smokeJarFile = smokeJar.get().archiveFile.get().asFile
+        runServer.classpath.files.collect { it == devJarFile ? smokeJarFile : it }
+    })
+    task.workingDir = smokeDir.get().asFile
+    task.ignoreExitValue = true
+    task.timeout = smokeLimit.plusMinutes(2)
+    task.outputs.upToDateWhen { false }
+
+    SmokeTestConsole console = null
+    File consoleLog = new File(task.workingDir, 'console.log')
+    task.doFirst {
+        File dir = task.workingDir
+        if (!(findProperty('accept_minecraft_eula')?.toString()?.toBoolean())) {
+            throw new GradleException('A Minecraft server only starts once the Minecraft EULA (https://aka.ms/MinecraftEULA) is accepted. '
+                    + 'To accept it for this test server, set accept_minecraft_eula=true in ~/.gradle/gradle.properties, or pass -Paccept_minecraft_eula=true.')
+        }
+        // A new world and logs each time; the config is kept, so that the defaults of a fresh file are tested only once
+        ['world', 'logs', 'crash-reports'].each { project.delete(new File(dir, it)) }
+        dir.mkdirs()
+        new File(dir, 'eula.txt').text = 'eula=true\n'
+        new File(dir, 'server.properties').text = [
+                'online-mode=false',
+                'server-port=25599',
+                'level-seed=bridges',
+                'max-tick-time=-1',
+                'snooper-enabled=false',
+                'enable-query=false',
+                'enable-rcon=false',
+        ].join('\n') + '\n'
+        console = new SmokeTestConsole(new FileOutputStream(consoleLog))
+        task.standardOutput = console
+        task.errorOutput = console
+        task.standardInput = new SmokeTestInput(console, smokeLimit)
+        logger.lifecycle("Starting the test server in ${dir}, its console goes to ${consoleLog.name}")
+    }
+
+    task.doLast {
+        console?.close()
+        File dir = task.workingDir
+        List<String> problems = []
+
+        if (console == null || console.started.count > 0) {
+            problems << "the server did not finish starting within ${smokeLimit.toMinutes()} minutes"
+        }
+        int exit = task.executionResult.get().exitValue
+        if (exit != 0) {
+            problems << "the server exited with code ${exit}"
+        }
+        File[] crashes = new File(dir, 'crash-reports').listFiles()
+        if (crashes) {
+            problems << "the server wrote a crash report: ${crashes*.name.join(', ')}"
+        }
+
+        // Errors of the mod itself in the server log
+        File serverLog = new File(dir, 'logs/latest.log')
+        if (serverLog.exists()) {
+            serverLog.readLines('UTF-8').findAll { it.contains('/ERROR]') && it.toLowerCase().contains('bridges') }
+                    .each { problems << "latest.log: ${it.trim()}" }
+        }
+
+        if (problems) {
+            List<String> tail = consoleLog.exists() ? consoleLog.readLines('UTF-8').takeRight(40) : []
+            throw new GradleException("The server smoke test failed:\n  - ${problems.join('\n  - ')}\n\nLast lines of ${consoleLog}:\n${tail.join('\n')}")
+        }
+        logger.lifecycle('The server started and stopped.')
+    }
+}

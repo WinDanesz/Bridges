@@ -1,0 +1,8 @@
+settings.dansbridges:general_settings=General Settings
+settings.dansbridges:bridge_type_settings=Bridge Types
+settings.dansbridges:block_settings=Blocks from Other Mods
+commands.dansbridges:usage=/dansbridges place <bridge> [broken]
+commands.dansbridges:place.unknown=There is no bridge called %s
+commands.dansbridges:place.no_target=Look at a river to place a bridge across it
+commands.dansbridges:place.failed=%s doesn't fit here. Look across a river it fits, from near the bank, and check the log for any problem with its files
+commands.dansbridges:place.success=Placed %s

@@ -1,0 +1,95 @@
+Dan's Bridges License
+
+Copyright (c) 2026 WinDanesz. All rights not expressly granted below
+are reserved.
+
+This license covers the source code, build scripts and original assets of
+Dan's Bridges (the "Mod"), but not the third-party content described in
+section 4. The Mod is published at
+https://github.com/WinDanesz/Bridges. "Official Releases" are the
+compiled builds of the Mod published by the Author on the Mod's official
+project pages. The "Author" is WinDanesz.
+
+
+1. WHAT YOU MAY DO
+
+  a) Read, study, build and run the source code.
+
+  b) Fork the repository and publish your fork's source code, for example
+     on GitHub, as long as this license file stays with it unchanged.
+
+  c) Modify the Mod and build it for your own use, including on private
+     servers you run and in modpacks that you do not publish.
+
+  d) Share builds of a modified Mod privately with a small group of people
+     for testing, such as the players of your server, as long as they are
+     not offered to the public.
+
+  e) Submit changes to the Mod, such as pull requests, issues with patches
+     or other code (see section 3).
+
+  f) Include unmodified Official Releases in a modpack, including a public
+     one, or point to them from it.
+
+  g) Use small portions of the code, such as single methods or techniques,
+     in your own distinct project, with credit to the Author and a link to
+     this repository, as long as that project is not a substitute for the
+     Mod or for one of its features as a whole.
+
+  h) Let an automated build service, such as GitHub Actions, build your
+     fork or your pull request and keep the builds as temporary build
+     artifacts of that service, for testing and review.
+
+
+2. WHAT YOU MAY NOT DO
+
+  a) Publish or distribute, publicly, any compiled build (such as a .jar
+     file) of a modified version of the Mod, or of a fork of it. This
+     covers mod hosting sites (including CurseForge, Modrinth and
+     Planet Minecraft, etc.), launchers, mod portals, download sites, release
+     pages, and any other place where the
+     public can get it. It also covers public modpacks that contain such
+     a build. The only exception is the build artifacts in continuous integration services, such as GitHub Actions, that are used for testing and review.
+
+  b) Re-upload Official Releases on their own, outside a modpack, to any
+     site or service.
+
+  c) Publish the Mod, a fork of it, or a substantial part of it, under a
+     different name or as your own project, whether as a build or as a
+     project page on a mod hosting site.
+
+  d) Sell the Mod or a fork of it, or put access to it behind a payment.
+
+  e) Remove or change copyright notices, credits or this license.
+
+If you want to do any of the above, ask the Author. Permission is only
+given in writing, by the Author, and only for what it names.
+
+
+3. CONTRIBUTIONS
+
+By submitting a contribution to the Mod (code, assets, translations or
+anything else), you confirm that you have the right to submit it, and you
+grant the Author a perpetual, worldwide, non-exclusive, royalty-free,
+irrevocable license to use, modify, publish, distribute and sublicense it as
+part of the Mod or any other project, under this license or any other
+license the Author chooses. You keep the copyright of your contribution,
+and you will be credited for it.
+
+4. TERMINATION
+
+Your rights under this license end automatically if you break it. They come
+back if you stop breaking it within 30 days of being told about it by the
+Author. This applies only the first time you break this license. After that,
+your rights come back only with the Author's written permission.
+
+
+5. NO WARRANTY
+
+THE MOD IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE MOD OR THE USE OF OR OTHER DEALINGS IN THE MOD. THIS
+INCLUDES ANY DAMAGE TO WORLDS, SAVES OR OTHER DATA.
